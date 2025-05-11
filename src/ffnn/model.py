@@ -1,8 +1,8 @@
-from src.layer import Layer
-from src.utils import batch_iterator, get_pyvis_config
-from src.loss import LossFunction, CategoricalCrossentropy
-from src.activation import Activation, Softmax
-from src.initializer import Initializer
+from src.ffnn.layer import Layer
+from src.ffnn.utils import batch_iterator, get_pyvis_config
+from src.ffnn.loss import LossFunction, CategoricalCrossentropy
+from src.ffnn.activation import Activation, Softmax
+from src.ffnn.initializer import Initializer
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl

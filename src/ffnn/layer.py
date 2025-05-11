@@ -1,6 +1,6 @@
 from abc import ABC
-from src.initializer import Initializer
-from src.activation import Activation
+from src.ffnn.initializer import Initializer
+from src.ffnn.activation import Activation
 
 
 class Layer(ABC):
