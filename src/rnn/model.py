@@ -4,6 +4,10 @@ from tensorflow.keras import layers, Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from sklearn.metrics import f1_score
+from ..ffnn.model import FFNNModel
+from ..ffnn.activation import Softmax
+from ..ffnn.loss import CategoricalCrossentropy
+from ..ffnn.initializer import XavierInitializer
 
 
 class RNNModel:
@@ -24,6 +28,15 @@ class RNNModel:
 
         self.model = self._build_keras_model(embedding_matrix)
         self._initialize_weights()
+
+        rnn_output_dim = rnn_units * 2 if bidirectional else rnn_units
+        self.classifier = FFNNModel(
+            layers=[rnn_output_dim, 3],
+            activation_functions=[Softmax()],
+            loss_function=CategoricalCrossentropy(),
+            weight_initializer=[XavierInitializer()],
+            learning_rate=0.01,
+        )
 
     def _build_keras_model(self, embedding_matrix: Optional[np.ndarray]) -> Model:
         inputs = layers.Input(shape=(None,))
@@ -46,7 +59,6 @@ class RNNModel:
             rnn = layers.SimpleRNN(self.rnn_units, return_sequences=False)(embedding)
 
         dropout = layers.Dropout(self.dropout_rate)(rnn)
-
         outputs = layers.Dense(3, activation="softmax")(dropout)
 
         model = Model(inputs=inputs, outputs=outputs)
@@ -63,7 +75,7 @@ class RNNModel:
 
         # For bidirectional RNN, we need double the units
         rnn_units = self.rnn_units * 2 if self.bidirectional else self.rnn_units
-        
+
         self.Wxh = np.random.normal(0, 0.1, (self.embedding_dim, rnn_units))
         self.Whh = np.random.normal(0, 0.1, (rnn_units, rnn_units))
         self.bh = np.zeros((1, rnn_units))
@@ -120,9 +132,11 @@ class RNNModel:
 
     def save_weights(self, filepath: str):
         self.model.save_weights(filepath)
+        self.classifier.save(filepath + "_classifier")
 
     def load_weights(self, filepath: str):
         self.model.load_weights(filepath)
+        self.classifier = FFNNModel.load(filepath + "_classifier")
         self._update_scratch_weights()
 
     def _update_scratch_weights(self):
@@ -140,11 +154,13 @@ class RNNModel:
             bh_backward = keras_weights[6]
 
             self.Wxh = np.concatenate([Wxh_forward, Wxh_backward], axis=1)
-            self.Whh = np.block([
-                [Whh_forward, np.zeros((self.rnn_units, self.rnn_units))],
-                [np.zeros((self.rnn_units, self.rnn_units)), Whh_backward]
-            ])
-            
+            self.Whh = np.block(
+                [
+                    [Whh_forward, np.zeros((self.rnn_units, self.rnn_units))],
+                    [np.zeros((self.rnn_units, self.rnn_units)), Whh_backward],
+                ]
+            )
+
             self.bh = np.concatenate([bh_forward, bh_backward])
             self.bh = self.bh.reshape(1, -1)
 
