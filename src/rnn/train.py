@@ -1,4 +1,5 @@
 from src.rnn.preprocessing import TextPreprocessor
+from src.rnn.keras import RNNKerasModel
 from src.rnn.model import RNNModel
 from src.rnn.utils import load_nusax_data
 import json
@@ -23,7 +24,7 @@ def main():
     train_sequences = preprocessor.preprocess(train_texts)
     test_sequences = preprocessor.preprocess(test_texts)
 
-    model = RNNModel(
+    keras_model = RNNKerasModel(
         vocab_size=preprocessor.get_vocab_size(),
         embedding_dim=100,
         rnn_units=128,
@@ -31,16 +32,25 @@ def main():
         bidirectional=True,
     )
 
-    history = model.model.fit(
+    history = keras_model.model.fit(
         train_sequences, train_labels, validation_split=0.1, epochs=10, batch_size=32
     )
 
-    model.save_weights(OUTPUT_PATH + "/model.weights.h5")
+    keras_model.save_weights(OUTPUT_PATH + "/keras_model.weights.h5")
+    keras_model.save_dense_layer_weights(OUTPUT_PATH + "/dense_layer_weights.npz")
+    keras_f1 = keras_model.evaluate(test_sequences, test_labels)
 
-    keras_f1 = model.evaluate(test_sequences, test_labels, from_scratch=False)
+    scratch_model = RNNModel(
+        vocab_size=preprocessor.get_vocab_size(),
+        embedding_dim=100,
+        rnn_units=128,
+        dropout_rate=0.2,
+        bidirectional=True,
+    )
 
-    model.load_weights(OUTPUT_PATH + "/model.weights.h5")
-    scratch_f1 = model.evaluate(test_sequences, test_labels, from_scratch=True)
+    scratch_model.load_dense_layer_weights(OUTPUT_PATH + "/dense_layer_weights.npz")
+    scratch_model.save_weights(OUTPUT_PATH + "/scratch_model.weights.npy")
+    scratch_f1 = scratch_model.evaluate(test_sequences, test_labels)
 
     results = {
         "keras_f1_score": float(keras_f1),
