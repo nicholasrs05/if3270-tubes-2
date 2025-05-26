@@ -148,9 +148,8 @@ class FlattenScratch(LayerScratch):
         return input.reshape((input.shape[0], -1))
 
 class DenseScratch(LayerScratch):
-    def __init__(self, units, activation=None):
+    def __init__(self, activation=None):
         super().__init__()
-        self.units = units
         self.activation = activation
         self.weights = None
         self.bias = None
