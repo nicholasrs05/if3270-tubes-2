@@ -83,8 +83,20 @@ class MaxPooling2DScratch(LayerScratch):
         ph, pw = self.pool_size
         sh, sw = self.strides
 
-        out_h = (h - ph) // sh + 1
-        out_w = (w - pw) // sw + 1
+        if self.padding == 'same':
+            out_h = int(np.ceil(h / sh))
+            out_w = int(np.ceil(w / sw))
+            pad_h = max((out_h - 1) * sh + ph - h, 0)
+            pad_w = max((out_w - 1) * sw + pw - w, 0)
+            pad_top = pad_h // 2
+            pad_bottom = pad_h - pad_top
+            pad_left = pad_w // 2
+            pad_right = pad_w - pad_left
+            input = np.pad(input, ((0, 0), (pad_top, pad_bottom), (pad_left, pad_right), (0, 0)), mode='constant')
+        else:
+            out_h = (h - ph) // sh + 1
+            out_w = (w - pw) // sw + 1
+
         output = np.zeros((batch, out_h, out_w, c))
 
         for y in range(out_h):
@@ -93,6 +105,43 @@ class MaxPooling2DScratch(LayerScratch):
                 output[:, y, x, :] = np.max(region, axis=(1, 2))
 
         return output
+
+
+class AvgPooling2DScratch(LayerScratch):
+    def __init__(self, pool_size=(2, 2), strides=None, padding='valid'):
+        super().__init__()
+        self.pool_size = pool_size
+        self.strides = strides or pool_size
+        self.padding = padding
+
+    def forward(self, input):
+        batch, h, w, c = input.shape
+        ph, pw = self.pool_size
+        sh, sw = self.strides
+
+        if self.padding == 'same':
+            out_h = int(np.ceil(h / sh))
+            out_w = int(np.ceil(w / sw))
+            pad_h = max((out_h - 1) * sh + ph - h, 0)
+            pad_w = max((out_w - 1) * sw + pw - w, 0)
+            pad_top = pad_h // 2
+            pad_bottom = pad_h - pad_top
+            pad_left = pad_w // 2
+            pad_right = pad_w - pad_left
+            input = np.pad(input, ((0, 0), (pad_top, pad_bottom), (pad_left, pad_right), (0, 0)), mode='constant')
+        else:
+            out_h = (h - ph) // sh + 1
+            out_w = (w - pw) // sw + 1
+
+        output = np.zeros((batch, out_h, out_w, c))
+
+        for y in range(out_h):
+            for x in range(out_w):
+                region = input[:, y*sh:y*sh+ph, x*sw:x*sw+pw, :]
+                output[:, y, x, :] = np.mean(region, axis=(1, 2))
+
+        return output
+
 
 class FlattenScratch(LayerScratch):
     def forward(self, input):
