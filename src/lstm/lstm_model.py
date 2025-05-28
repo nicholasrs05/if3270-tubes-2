@@ -76,7 +76,6 @@ class LSTMModel:
         self.label_mapping = label_mapping
         
     def load_weights_from_keras(self, keras_model):
-
         keras_layers = keras_model.layers
         layer_idx = 0
         
@@ -95,24 +94,52 @@ class LSTMModel:
                 break
                 
             print(f"Using Keras layer {layer_idx} for weights")
-            weights = keras_layers[layer_idx].get_weights()
-            print(f"Found {len(weights)} weight arrays")
             
             if isinstance(our_layer, EmbeddingLayer):
+                weights = keras_layers[layer_idx].get_weights()
+                print(f"Found {len(weights)} weight arrays")
                 if len(weights) >= 1:
                     our_layer.load_weights(weights[0])
                 layer_idx += 1
                 
             elif isinstance(our_layer, LSTMLayer):
+                weights = keras_layers[layer_idx].get_weights()
+                print(f"Found {len(weights)} weight arrays for LSTM")
                 if len(weights) > 0:
                     our_layer.load_weights(weights)
                 layer_idx += 1
                 
             elif isinstance(our_layer, BidirectionalLSTM):
-
-                pass
+                keras_layer = keras_layers[layer_idx]
+                print(f"Loading bidirectional LSTM weights from layer type: {type(keras_layer).__name__}")
+                
+                if isinstance(keras_layer, tf.keras.layers.Bidirectional):
+                    all_weights = keras_layer.get_weights()
+                    print(f"Bidirectional layer weights: {len(all_weights)} arrays")
+                    
+                    # In TensorFlow 2.x, bidirectional weights are typically split as
+                    # [forward_kernel, forward_recurrent_kernel, forward_bias, 
+                    #  backward_kernel, backward_recurrent_kernel, backward_bias]
+                    num_weights_per_lstm = len(all_weights) // 2
+                    
+                    forward_weights = all_weights[:num_weights_per_lstm]
+                    backward_weights = all_weights[num_weights_per_lstm:]
+                    
+                    print(f"Split into forward ({len(forward_weights)} arrays) and backward ({len(backward_weights)} arrays)")
+                    print(f"Forward shapes: {[w.shape for w in forward_weights]}")
+                    print(f"Backward shapes: {[w.shape for w in backward_weights]}")
+                    
+                    our_layer.load_weights(forward_weights, backward_weights)
+                    print("Bidirectional weights loaded successfully")
+                else:
+                    print(f"WARNING: Expected Bidirectional layer but got {type(keras_layer).__name__}")
+                    # Fallback for unexpected layer type
+                    
+                layer_idx += 1
                 
             elif isinstance(our_layer, DenseLayer):
+                weights = keras_layers[layer_idx].get_weights()
+                print(f"Found {len(weights)} weight arrays for Dense")
                 if len(weights) == 2:
                     our_layer.load_weights(weights[0], weights[1])
                 else:
@@ -121,8 +148,6 @@ class LSTMModel:
                 
             else:
                 print(f"Skipping layer type: {type(our_layer).__name__}")
-
-                
     
     def save(self, model_path: str, save_preprocessor: bool = True) -> None:
 
@@ -288,7 +313,7 @@ class LSTMModel:
                 
                 if input_dim > 0:
                     total_params += 2 * 4 * ((input_dim + layer.units + 1) * layer.units)
-                    
+
             elif isinstance(layer, DenseLayer):
                 input_dim = 0
                 for prev_layer in self.layers:
