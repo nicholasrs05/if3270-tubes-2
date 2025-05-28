@@ -7,7 +7,6 @@ class LSTMLayer:
         self.return_sequences = return_sequences
         self.go_backwards = go_backwards
         
-        # Initialize weights to None
         self.W_i = None  
         self.W_f = None   
         self.W_c = None  
@@ -23,7 +22,6 @@ class LSTMLayer:
         self.b_c = None
         self.b_o = None
         
-        # Track weight loading status
         self.weights_loaded = False
         
     def load_weights(self, weights):
@@ -34,28 +32,23 @@ class LSTMLayer:
         
         print(f"LSTM weights shapes: W={W.shape}, U={U.shape}, b={b.shape}")
         
-        # Automatic unit size detection based on recurrent kernel shape
         actual_units = U.shape[0] if U.shape[0] <= U.shape[1] else U.shape[1]
         
         if actual_units != self.units:
-            print(f"⚠️ WARNING: Using detected unit size {actual_units} instead of configured {self.units}")
-            self.units = actual_units  # Update units to match actual weights
+            print(f"WARNING: Using detected unit size {actual_units} instead of configured {self.units}")
+            self.units = actual_units  
         
-        # The gate slices will be based on actual unit size
         input_slice = slice(0, self.units)
         forget_slice = slice(self.units, 2*self.units)
         cell_slice = slice(2*self.units, 3*self.units)
         output_slice = slice(3*self.units, 4*self.units)
         
-        # Input weights (should be input_dim, 4*units)
         self.W_i = W[:, input_slice]
         self.W_f = W[:, forget_slice]
         self.W_c = W[:, cell_slice]
         self.W_o = W[:, output_slice]
         
-        # Process recurrent kernel based on shape analysis
         if U.shape[0] == self.units and U.shape[1] == 4*self.units:
-            # Keras format: (units, 4*units)
             print("Format: Keras standard (units, 4*units)")
             self.U_i = U[:, :self.units].T
             self.U_f = U[:, self.units:2*self.units].T
@@ -63,7 +56,6 @@ class LSTMLayer:
             self.U_o = U[:, 3*self.units:].T
             
         elif U.shape[0] == 4*self.units and U.shape[1] == self.units:
-            # Format: (4*units, units)
             print("Format: (4*units, units)")
             self.U_i = U[:self.units, :]
             self.U_f = U[self.units:2*self.units, :]
@@ -71,7 +63,6 @@ class LSTMLayer:
             self.U_o = U[3*self.units:, :]
             
         elif U.shape[1] == 4*self.units:
-            # Some other format with gates in second dimension
             print(f"Format: Adapting ({U.shape[0]}, 4*{self.units})")
             self.U_i = U[:, :self.units].T
             self.U_f = U[:, self.units:2*self.units].T
@@ -79,7 +70,6 @@ class LSTMLayer:
             self.U_o = U[:, 3*self.units:].T
             
         elif U.shape[0] == 4*self.units:
-            # Some other format with gates in first dimension
             print(f"Format: Adapting (4*{self.units}, {U.shape[1]})")
             self.U_i = U[:self.units, :]
             self.U_f = U[self.units:2*self.units, :]
@@ -87,7 +77,6 @@ class LSTMLayer:
             self.U_o = U[3*self.units:, :]
             
         elif U.shape[0] % 4 == 0:
-            # Try dividing first dimension by 4
             gate_size = U.shape[0] // 4
             print(f"Format: Dividing first dimension ({U.shape[0]}) into 4 gates of size {gate_size}")
             self.U_i = U[:gate_size, :]
@@ -96,7 +85,6 @@ class LSTMLayer:
             self.U_o = U[3*gate_size:, :]
             
         elif U.shape[1] % 4 == 0:
-            # Try dividing second dimension by 4
             gate_size = U.shape[1] // 4
             print(f"Format: Dividing second dimension ({U.shape[1]}) into 4 gates of size {gate_size}")
             self.U_i = U[:, :gate_size].T
@@ -105,7 +93,6 @@ class LSTMLayer:
             self.U_o = U[:, 3*gate_size:].T
             
         else:
-            # Last resort - transpose and try one more approach
             U_t = U.T
             print(f"Format: Last resort - transposing to {U_t.shape}")
             
@@ -124,14 +111,12 @@ class LSTMLayer:
             else:
                 raise ValueError(f"Cannot process recurrent kernel with shape {U.shape}")
         
-        # Bias terms - adapt to the unit size we're using
         if len(b) >= 4*self.units:
             self.b_i = b[input_slice]
             self.b_f = b[forget_slice]
             self.b_c = b[cell_slice]
             self.b_o = b[output_slice]
         else:
-            # For smaller bias vectors, try to adapt
             bias_unit_size = len(b) // 4
             self.b_i = b[:bias_unit_size]
             self.b_f = b[bias_unit_size:2*bias_unit_size]
@@ -154,15 +139,12 @@ class LSTMLayer:
             
         batch_size, seq_length, input_dim = inputs.shape
         
-        # Initialize hidden state and cell state
         h = np.zeros((batch_size, self.units))
         c = np.zeros((batch_size, self.units))
         
-        # Prepare output container if returning sequences
         if self.return_sequences:
             outputs = np.zeros((batch_size, seq_length, self.units))
         
-        # Process sequence
         time_steps = range(seq_length)
         if self.go_backwards:
             time_steps = reversed(time_steps)
@@ -170,25 +152,20 @@ class LSTMLayer:
         for t in time_steps:
             x_t = inputs[:, t, :]
             
-            # Gates computation
             i_gate = np.dot(x_t, self.W_i) + np.dot(h, self.U_i) + self.b_i
             f_gate = np.dot(x_t, self.W_f) + np.dot(h, self.U_f) + self.b_f
             c_gate = np.dot(x_t, self.W_c) + np.dot(h, self.U_c) + self.b_c
             o_gate = np.dot(x_t, self.W_o) + np.dot(h, self.U_o) + self.b_o
             
-            # Apply activations
             i_t = self.sigmoid(i_gate)
             f_t = self.sigmoid(f_gate)
             c_tilde = self.tanh(c_gate)
             o_t = self.sigmoid(o_gate)
             
-            # Update cell state
             c = f_t * c + i_t * c_tilde
             
-            # Update hidden state
             h = o_t * self.tanh(c)
             
-            # Store output if needed
             if self.return_sequences:
                 if self.go_backwards:
                     outputs[:, seq_length - 1 - t, :] = h
@@ -218,11 +195,9 @@ class BidirectionalLSTM:
         print(f"  Backward weights shapes: {[w.shape for w in backward_weights]}")
         
         try:
-            # Now load the weights into the forward and backward LSTM layers
             self.forward_lstm.load_weights(forward_weights)
             self.backward_lstm.load_weights(backward_weights)
             
-            # Update our unit size based on the loaded weights
             self.units = self.forward_lstm.units
             
             self.weights_loaded = True
@@ -232,13 +207,8 @@ class BidirectionalLSTM:
             raise
         
     def forward(self, inputs):
-        """
-        Forward pass through bidirectional LSTM
-        """
+     
         if not self.weights_loaded:
-            print("BidirectionalLSTM weights not loaded!")
-            print(f"Forward LSTM weights loaded: {hasattr(self.forward_lstm, 'weights_loaded') and self.forward_lstm.weights_loaded}")
-            print(f"Backward LSTM weights loaded: {hasattr(self.backward_lstm, 'weights_loaded') and self.backward_lstm.weights_loaded}")
             raise ValueError("Bidirectional LSTM weights not loaded. Call load_weights() first.")
        
         forward_out = self.forward_lstm.forward(inputs)
@@ -247,7 +217,6 @@ class BidirectionalLSTM:
         output = np.concatenate([forward_out, backward_out], axis=-1)
         
         if not self.return_sequences:
-            # Get last time step for each sequence
             output = output[:, -1, :]
             
         return output

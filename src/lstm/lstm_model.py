@@ -19,7 +19,6 @@ from .text_preprocessor import TextPreprocessor
 try:
     from ffnn.layer import DenseLayer
 except ImportError:
-    print("Warning: Could not import FFNN DenseLayer. Using simple implementation.")
     
     class DenseLayer:
         def __init__(self, units, activation='linear'):
@@ -117,9 +116,7 @@ class LSTMModel:
                     all_weights = keras_layer.get_weights()
                     print(f"Bidirectional layer weights: {len(all_weights)} arrays")
                     
-                    # In TensorFlow 2.x, bidirectional weights are typically split as
-                    # [forward_kernel, forward_recurrent_kernel, forward_bias, 
-                    #  backward_kernel, backward_recurrent_kernel, backward_bias]
+                 
                     num_weights_per_lstm = len(all_weights) // 2
                     
                     forward_weights = all_weights[:num_weights_per_lstm]
@@ -132,19 +129,18 @@ class LSTMModel:
                     our_layer.load_weights(forward_weights, backward_weights)
                     print("Bidirectional weights loaded successfully")
                 else:
-                    print(f"WARNING: Expected Bidirectional layer but got {type(keras_layer).__name__}")
-                    # Fallback for unexpected layer type
+                    pass
                     
                 layer_idx += 1
                 
             elif isinstance(our_layer, DenseLayer):
-                weights = keras_layers[layer_idx].get_weights()
-                print(f"Found {len(weights)} weight arrays for Dense")
-                if len(weights) == 2:
-                    our_layer.load_weights(weights[0], weights[1])
-                else:
-                    print(f"Warning: Expected 2 weight arrays for Dense layer but got {len(weights)}")
-                layer_idx += 1
+                if layer_idx < len(keras_layers):
+                    weights = keras_layers[layer_idx].get_weights()
+                    if len(weights) == 2:
+                        print(f"Loading Dense weights (shape: {weights[0].shape}) and bias (shape: {weights[1].shape})")
+                        our_layer.weights = weights[0] 
+                        our_layer.bias = weights[1]    
+                    layer_idx += 1
                 
             else:
                 print(f"Skipping layer type: {type(our_layer).__name__}")

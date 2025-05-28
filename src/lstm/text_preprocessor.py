@@ -30,14 +30,11 @@ class TextPreprocessor:
         if not self.is_fitted:
             raise ValueError("TextPreprocessor must be fitted before preprocessing. Call fit() first.")
             
-        # Handle single string input
         if isinstance(texts, str):
             texts = [texts]
             
-        # Vectorize texts
         sequences = self.vectorizer(texts)
         
-        # Convert to numpy array if it's a TensorFlow tensor
         if hasattr(sequences, 'numpy'):
             sequences = sequences.numpy()
             
@@ -75,7 +72,6 @@ class TextPreprocessor:
             standardize=config['standardize']
         )
         
-        # Manually set the vocabulary
         vocab = config['vocabulary']
         preprocessor.vectorizer.set_vocabulary(vocab)
         preprocessor.is_fitted = True
