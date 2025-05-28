@@ -40,12 +40,28 @@ class Conv2DScratch(LayerScratch):
         self.bias = None
 
     def set_weights(self, weights):
-        self.weights, self.bias = weights
+        w, b = weights
+
+        if w.ndim != 4:
+            raise ValueError(f"Expected Conv2D weights to be 4D, got shape {w.shape}")
+        if b.ndim != 1:
+            raise ValueError(f"Expected bias to be 1D, got shape {b.shape}")
+        if w.shape[3] != self.filters:
+            raise ValueError(f"Weight filter mismatch: expected {self.filters}, got {w.shape[3]}")
+        if b.shape[0] != self.filters:
+            raise ValueError(f"Bias shape mismatch: expected ({self.filters},), got {b.shape}")
+
+        self.weights = w
+        self.bias = b
 
     def forward(self, input):
+        if self.weights is None or self.bias is None:
+            raise ValueError("Weights must be set before calling forward")
+        
         batch, h, w, c = input.shape
         kh, kw = self.kernel_size
-        sh = sw = self.strides
+        sh = self.strides
+        sw = self.strides
 
         if self.padding == 'same':
             pad_h = ((h - 1) * sh + kh - h) // 2
@@ -79,6 +95,9 @@ class MaxPooling2DScratch(LayerScratch):
         self.padding = padding
 
     def forward(self, input):
+        if input.ndim != 4:
+            raise ValueError(f"Expected 4D input for MaxPooling2D, got shape {input.shape}")
+        
         batch, h, w, c = input.shape
         ph, pw = self.pool_size
         sh, sw = self.strides
@@ -115,6 +134,9 @@ class AvgPooling2DScratch(LayerScratch):
         self.padding = padding
 
     def forward(self, input):
+        if input.ndim != 4:
+            raise ValueError(f"Expected 4D input for AvgPooling2D, got shape {input.shape}")
+        
         batch, h, w, c = input.shape
         ph, pw = self.pool_size
         sh, sw = self.strides
@@ -145,19 +167,36 @@ class AvgPooling2DScratch(LayerScratch):
 
 class FlattenScratch(LayerScratch):
     def forward(self, input):
+        if input.ndim < 2:
+            raise ValueError(f"Expected at least 2D input for Flatten, got shape {input.shape}")
+        
         return input.reshape((input.shape[0], -1))
 
 class DenseScratch(LayerScratch):
-    def __init__(self, activation=None):
+    def __init__(self, neurons, activation=None):
         super().__init__()
+        self.neurons = neurons
         self.activation = activation
         self.weights = None
         self.bias = None
 
     def set_weights(self, weights):
-        self.weights, self.bias = weights
+        w, b = weights
+
+        if len(w.shape) != 2:
+            raise ValueError(f"Expected weights to be 2D, got shape {w.shape}")
+        if w.shape[1] != self.neurons:
+            raise ValueError(f"Weights don't match neurons: expected {self.neurons}, got {w.shape[1]}")
+        if b.shape != (self.neurons,):
+            raise ValueError(f"Bias shape mismatch: expected ({self.neurons},), got {b.shape}")
+        
+        self.weights = w
+        self.bias = b
 
     def forward(self, input):
+        if self.weights.shape[0] != input.shape[1]:
+            raise ValueError(f"Weights shape {self.weights.shape[0]} doesn't match input shape {input.shape[1]}")
+        
         output = input @ self.weights + self.bias
         if self.activation == 'relu':
             output = np.maximum(0, output)
