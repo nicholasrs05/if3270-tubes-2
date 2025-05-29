@@ -62,12 +62,42 @@ class RNNKerasModel:
         return f1_score(y, y_pred, average="macro")
 
     def save_weights(self, filepath: str):
-        self.model.save_weights(filepath)
+        embedding_weights = self.model.layers[1].get_weights()[0]
 
-    def load_weights(self, filepath: str):
-        self.model.load_weights(filepath)
+        rnn_layer = self.model.layers[2]
+        if self.bidirectional:
+            forward_layer = rnn_layer.forward_layer
+            backward_layer = rnn_layer.backward_layer
 
-    def save_dense_layer_weights(self, filepath: str):
-        dense_layer = self.model.layers[-1]
-        weights = dense_layer.get_weights()
-        np.savez(filepath, weights=weights[0], biases=weights[1]) 
+            Wxh_f = forward_layer.get_weights()[0]
+            Whh_f = forward_layer.get_weights()[1]
+            bh_f = forward_layer.get_weights()[2]
+
+            Wxh_b = backward_layer.get_weights()[0]
+            Whh_b = backward_layer.get_weights()[1]
+            bh_b = backward_layer.get_weights()[2]
+
+            Wxh = np.concatenate([Wxh_f, Wxh_b], axis=1)
+            Whh = np.block(
+                [
+                    [Whh_f, np.zeros((self.rnn_units, self.rnn_units))],
+                    [np.zeros((self.rnn_units, self.rnn_units)), Whh_b],
+                ]
+            )
+
+            bh = np.concatenate([bh_f, bh_b])  # (2*rnn_units,)
+        else:
+            Wxh = rnn_layer.get_weights()[0]  # kernel
+            Whh = rnn_layer.get_weights()[1]  # recurrent_kernel
+            bh = rnn_layer.get_weights()[2]  # bias
+
+        dense_weights = self.model.layers[-1].get_weights()
+
+        weights = {
+            "embedding_weights": embedding_weights,
+            "rnn_weights": {"Wxh": Wxh, "Whh": Whh, "bh": bh},
+            "dense_weights": {"weights": dense_weights[0], "biases": dense_weights[1]},
+        }
+
+        np.savez(filepath, **weights)
+
