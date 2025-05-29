@@ -9,6 +9,7 @@ FOLDER_PATH = "data/nusax"
 OUTPUT_PATH = "src/rnn/output"
 WEIGHTS_FILE = "model_weights.npz"
 
+
 def main():
     os.makedirs(OUTPUT_PATH, exist_ok=True)
 
@@ -35,16 +36,17 @@ def main():
     )
 
     history = keras_model.model.fit(
-        train_sequences, train_labels,
+        train_sequences,
+        train_labels,
         validation_data=(valid_sequences, valid_labels),
         epochs=10,
         batch_size=32,
-        verbose=0
+        verbose=0,
     )
 
     weights_path = os.path.join(OUTPUT_PATH, WEIGHTS_FILE)
     keras_model.save_weights(weights_path)
-    
+
     keras_f1 = keras_model.evaluate(test_sequences, test_labels)
 
     scratch_model = RNNModel(

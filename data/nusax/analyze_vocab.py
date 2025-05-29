@@ -9,25 +9,20 @@ def load_texts_from_csv(file_path):
     return df['text'].astype(str).tolist()
 
 def tokenize(text):
-    # Simple tokenizer: lowercase, remove punctuation, split by whitespace
     text = text.lower()
-    text = re.sub(r"[^\w\s]", "", text)  # remove punctuation
+    text = re.sub(r"[^\w\s]", "", text)
     return text.split()
 
-# === Load datasets ===
 train_texts = load_texts_from_csv("train.csv")
 valid_texts = load_texts_from_csv("valid.csv")
 test_texts = load_texts_from_csv("test.csv")
 
-# === Combine and tokenize ===
 all_texts = train_texts + valid_texts + test_texts
 all_tokens = list(itertools.chain.from_iterable(tokenize(text) for text in all_texts))
 
-# === Count word frequencies ===
 word_freq = Counter(all_tokens)
 vocab_size = len(word_freq)
 
-# === Suggest max_tokens value ===
 common_token_cutoffs = [1000, 2000, 5000, 10000, 20000, 30000]
 token_coverage = {}
 sorted_words = word_freq.most_common()
@@ -38,17 +33,14 @@ for cutoff in common_token_cutoffs:
     coverage_ratio = covered_count / sum(word_freq.values())
     token_coverage[cutoff] = coverage_ratio
 
-# === Print Results ===
 print(f"Total unique tokens: {vocab_size}")
 print("\nToken coverage at different vocab sizes:")
 for cutoff, coverage in token_coverage.items():
     print(f"  {cutoff:>6} tokens → {coverage:.2%} coverage")
 
-    # Token lengths
 token_lengths = [len(tokenize(text)) for text in all_texts]
 length_array = np.array(token_lengths)
 
-# Summary stats
 print("\nSequence length stats:")
 print(f"  Max:     {length_array.max()}")
 print(f"  95th %:  {np.percentile(length_array, 95):.0f}")
