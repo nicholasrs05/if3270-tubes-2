@@ -29,7 +29,7 @@ class InputScratch(LayerScratch):
         return input
 
 class Conv2DScratch(LayerScratch):
-    def __init__(self, filters, kernel_size, strides=1, activation=None, padding='valid'):
+    def __init__(self, filters, kernel_size, strides=(1, 1), activation=None, padding='valid'):
         super().__init__()
         self.filters = filters
         self.kernel_size = kernel_size
@@ -60,8 +60,7 @@ class Conv2DScratch(LayerScratch):
         
         batch, h, w, c = input.shape
         kh, kw = self.kernel_size
-        sh = self.strides
-        sw = self.strides
+        sh, sw = self.strides
 
         if self.padding == 'same':
             pad_h = ((h - 1) * sh + kh - h) // 2
