@@ -112,15 +112,6 @@ class DenseScratch(LayerScratch):
                 f"Weights shape {self.weights.shape[0]} doesn't match input shape {input.shape[1]}"
             )
 
-        input = np.clip(input, -1e6, 1e6)
-        input = input / (np.max(np.abs(input)) + 1e-8)
-
-        self.weights = np.clip(self.weights, -1e6, 1e6)
-        self.weights = self.weights / (np.max(np.abs(self.weights)) + 1e-8)
-
-        self.bias = np.clip(self.bias, -1e6, 1e6)
-        self.bias = self.bias / (np.max(np.abs(self.bias)) + 1e-8)
-
         output = np.dot(input, self.weights) + self.bias
 
         if self.activation == "relu":

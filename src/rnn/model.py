@@ -23,7 +23,7 @@ class RNNModel:
         self.rnn_layer = RNNScratch(embedding_dim, rnn_units, bidirectional)
         self.dense_layer = DenseScratch(3, activation="softmax")
 
-    def forward_propagation(self, x: np.ndarray) -> np.ndarray:
+    def forward_propagation(self, x: np.ndarray, training: bool = False) -> np.ndarray:
         batch_size = x.shape[0]
         seq_length = x.shape[1]
 
@@ -47,7 +47,7 @@ class RNNModel:
                 x_t = self.embedding_layer.forward(x[:, t])
                 h = self.rnn_layer.forward(x_t, h)
 
-        if self.dropout_rate > 0:
+        if training and self.dropout_rate > 0:
             mask = np.random.binomial(1, 1 - self.dropout_rate, h.shape) / (
                 1 - self.dropout_rate
             )
@@ -57,7 +57,7 @@ class RNNModel:
         return probs
 
     def predict(self, x: np.ndarray) -> np.ndarray:
-        probs = self.forward_propagation(x)
+        probs = self.forward_propagation(x, training=False)
         return np.argmax(probs, axis=1)
 
     def evaluate(self, x: np.ndarray, y: np.ndarray) -> float:
